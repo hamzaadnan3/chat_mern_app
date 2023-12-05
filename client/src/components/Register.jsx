@@ -5,7 +5,7 @@ import { UserContext } from "../UserContext";
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isRegisterOrLogin, setIsRegisterOrLogin] = useState("login");
+  const [isRegisterOrLogin, setIsRegisterOrLogin] = useState("register");
   const { setUsername: setLoggedInUsername, setId } = useContext(UserContext);
 
   const handleSubmit = async (e) => {

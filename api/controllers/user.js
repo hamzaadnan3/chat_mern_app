@@ -46,3 +46,42 @@ export const profile = async (req, res) => {
     throw error;
   }
 };
+
+export const login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const foundUser = await UserModel.findOne({ username });
+    if (foundUser) {
+      const isMatchedPassword = bcrypt.compareSync(
+        password,
+        foundUser.password
+      );
+      if (isMatchedPassword) {
+        const token = jwt.sign(
+          { userId: foundUser._id, username },
+          process.env.JWT_SECRET
+        );
+        res
+          .status(200)
+          .cookie("token", token, { sameSite: "none", secure: true })
+          .json({
+            success: true,
+            id: foundUser._id,
+          });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+  } catch (error) {
+    throw error;
+  }
+};
