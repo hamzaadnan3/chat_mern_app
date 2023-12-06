@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
 import WebSocket, { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
+import MessageModel from "./models/message.js";
 
 //routes import
 import userRoutes from "./routes/user.js";
@@ -48,6 +49,7 @@ const server = app.listen(4000, () => {
 const wsServer = new WebSocketServer({ server });
 
 wsServer.on("connection", (connection, req) => {
+  //reading username and userId from cookies and sencing it as an object to connection
   const cookies = req.headers.cookie;
   if (cookies) {
     const tokenCookieString = cookies
@@ -65,6 +67,32 @@ wsServer.on("connection", (connection, req) => {
       }
     }
   }
+
+  //sending message
+  connection.on("message", async (message) => {
+    const messageData = JSON.parse(message.toString());
+    const { recepient, text } = messageData;
+    if (recepient && text) {
+      const messageDoc = await MessageModel.create({
+        sender: connection.userId,
+        recepient,
+        text,
+      });
+      [...wsServer.clients]
+        .filter((c) => c.userId === recepient)
+        .forEach((c) =>
+          c.send(
+            JSON.stringify({
+              text,
+              sender: connection.userId,
+              id: messageDoc._id,
+            })
+          )
+        );
+    }
+  });
+
+  //notifying all the users whenever a new user makes a websocket connection about that user
   [...wsServer.clients].forEach((client) =>
     client.send(
       JSON.stringify({
