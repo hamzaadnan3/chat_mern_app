@@ -9,6 +9,7 @@ import MessageModel from "./models/message.js";
 
 //routes import
 import userRoutes from "./routes/user.js";
+import messageRoutes from "./routes/message.js";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use(cookieParser());
 
 //routes
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/message", messageRoutes);
 
 //server connection
 const server = app.listen(4000, () => {
@@ -49,6 +51,38 @@ const server = app.listen(4000, () => {
 const wsServer = new WebSocketServer({ server });
 
 wsServer.on("connection", (connection, req) => {
+  //function for online poeple
+  function notifyOnlinePoeple() {
+    [...wsServer.clients].forEach((client) =>
+      client.send(
+        JSON.stringify({
+          online: [...wsServer.clients].map((c) => ({
+            userId: c.userId,
+            username: c.username,
+          })),
+        })
+      )
+    );
+  }
+
+  //pinging users to know if they are online or not after every 5 seconds
+  //  by pinging and waiting for the ping response for 1 second timeout
+  connection.isAlive = true;
+  connection.timer = setInterval(() => {
+    connection.ping();
+    connection.deathTimer = setTimeout(() => {
+      connection.isAlive = false;
+      clearInterval(connection.timer);
+      connection.terminate();
+      notifyOnlinePoeple();
+    }, 1000);
+  }, 5000);
+
+  //ping reply
+  connection.on("pong", () => {
+    clearTimeout(connection.deathTimer);
+  });
+
   //reading username and userId from cookies and sencing it as an object to connection
   const cookies = req.headers.cookie;
   if (cookies) {
@@ -93,16 +127,7 @@ wsServer.on("connection", (connection, req) => {
   });
 
   //notifying all the users whenever a new user makes a websocket connection about that user
-  [...wsServer.clients].forEach((client) =>
-    client.send(
-      JSON.stringify({
-        online: [...wsServer.clients].map((c) => ({
-          userId: c.userId,
-          username: c.username,
-        })),
-      })
-    )
-  );
+  notifyOnlinePoeple();
 });
 
 app.get("/", (req, res) => {

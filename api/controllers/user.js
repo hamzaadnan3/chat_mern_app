@@ -85,3 +85,23 @@ export const login = async (req, res) => {
     throw error;
   }
 };
+
+export const getAllPoeple = async (req, res) => {
+  try {
+    const users = await UserModel.find({}, { _id: 1, username: 1 });
+    res.json(users);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    res.cookie("token", "", { sameSite: "none", secure: true }).json({
+      success: true,
+      message: "User logged out successfully",
+    });
+  } catch (error) {
+    throw error;
+  }
+};
