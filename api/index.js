@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import WebSocket, { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
 import MessageModel from "./models/message.js";
+import fs from "fs";
 
 //routes import
 import userRoutes from "./routes/user.js";
@@ -105,12 +106,22 @@ wsServer.on("connection", (connection, req) => {
   //sending message
   connection.on("message", async (message) => {
     const messageData = JSON.parse(message.toString());
-    const { recepient, text } = messageData;
-    if (recepient && text) {
+    const { recepient, text, file } = messageData;
+    let fileName = null;
+    if (file) {
+      const parts = file.name.split(".");
+      const fileExt = parts[parts.length - 1];
+      fileName = Date.now() + "." + fileExt;
+      const path = __dirname + "/uploads/" + fileName;
+      const bufferData = new Buffer(file.data.split(",")[1], "base64");
+      fs.writeFile(path, bufferData);
+    }
+    if (recepient && (text || file)) {
       const messageDoc = await MessageModel.create({
         sender: connection.userId,
         recepient,
         text,
+        file: file ? fileName : null,
       });
       [...wsServer.clients]
         .filter((c) => c.userId === recepient)
@@ -119,6 +130,8 @@ wsServer.on("connection", (connection, req) => {
             JSON.stringify({
               text,
               sender: connection.userId,
+              file: file ? fileName : null,
+
               id: messageDoc._id,
             })
           )
